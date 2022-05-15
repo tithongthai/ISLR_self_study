@@ -1,0 +1,651 @@
+---
+title: "Chapter 3: Linear Regression"
+author: "Hoang-Chau Luong"
+date: "13 May 2022"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    code_folding: hide
+    theme: readable
+    highlight: haddock
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# **Libraries**
+The `library()` function is used to load *libraries*, or groups of functions and data sets that are not included in the based R distribution. Basic functions that perform least squares regression and other simple analyses come standard with the base distribution, but more exotic functions require aditional libraries. Here we load he `MASS` package, which is a very large collection of data sets and functions. We also load the `ISLR` package, which includes the data sets associated with this book
+```{r message=FALSE, warning=FALSE}
+library(MASS)
+library(ISLR)
+```
+
+# **Simple Linear Regression**
+The `MASS` library contains the `Boston` data set, which records `medv` (median house value) for 506 neighborhoods around Boston. We will seek to predict `medv` using 13 predictors such as `rm`(average number of rooms per house), `age`(average age of houses), and `lstat`(percent of households with low socioeconomic status).
+
+```{r}
+fix(Boston)
+
+names(Boston) # get the name of all variables
+```
+To find out more about the `Boston` data set, we can type `?Boston` in console
+
+  We will start by using the `lm()` function to fit a simple linear regression model, with `medv` as the response and `lstat` as the predictor. The basic syntax is `lm(y ~ x, data)`, where y is the response, x is the predictor, and data is the data set in which these two variables are kept.
+```{r}
+lm.fit = lm(medv ~ lstat, data = Boston)
+attach(Boston)
+lm.fit = lm(medv ~ lstat)
+```
+
+If we type `lm.fit`, some basic information about the model is output. For more detailed information, we use `summary(lm.fit)`. This gives us `p-values` and `standard error` for the coefficients, as well as the $R^{2}$ statistic and F-statistic for the model.
+```{r}
+lm.fit
+
+summary(lm.fit)
+```
+
+You can see that a lot of parameters are showed, your task read and grasp them.
+We can use the `names()` function in order to find out what other pieces of information are stored in `lm.fit`. Although we can extract these quantities by name--e.g. `lm.fit$coefficients`--it is safer to use the extractor functions like `coef()` to access them.
+```{r}
+names(lm.fit)
+
+lm.fit$rank
+```
+
+In order to obtain a confidence interval for the coefficient estimates, we can use the `confint()` command.
+```{r}
+confint(lm.fit)
+```
+
+The `predict()` function can be used to produce confidence intervals and prediction intervals for the prediction of `medv` for a given value of `lstat`.
+```{r}
+predict(lm.fit, data.frame(lstat = (c(5, 10, 15))),
+        interval = "confidence")
+
+predict(lm.fit, data.frame(lstat = (c(5, 10, 15))),
+        interval = "prediction")
+```
+
+For instance, the 95% confidence interval associated with a `lstat` value of 10 is (24.47, 25.63), and the 95% prediction interval is (12.828, 37.28). As expected, the confidence and prediction intervals are centered around the same point (a predicted value of 25.05 for `medv` when `lstat` equals 10), but the latter are substantially wider.
+  we will not plot `medv` and `lstat` along with the least squares regression line using the `plot()` and `abline()` functions
+```{r}
+plot(lstat, medv, col = "blue")
+
+abline(lm.fit, col = "red")
+```
+
+There is some evidence for non-linearity in the relationship between `lstat` and `medv`. We will explore this issue later in this lab.
+  The `abline()` function can be used to draw any line, not just the least squares regression line. To draw a line with intercept `a` and slope `b`, we type `abline(a, b)`. Below we experiment with some additional settings for plotting lines and points. The `lwd=3` command causes the width of the regression line to be increased by a factor of 3; this works for the `plot()` and `lines()` functions also. We can use the `pch` option to create different plotting symbols.
+
+`abline(lm.fit, lwd = 3)`
+`abline(lm.fit, lwd = 3, col = "red")`
+`plot(lstat, medv, col="red")`
+`plot(lstat, medv, pch = 20)`
+`plot(lstat, medv, pch = "+")`
+`plot(1:20, 1:20, pch = 1:20)`
+`plot(lstat, medv, pch = "c")`
+
+
+  Next we examine some diagnostic plots, several of which were discussed in Section 3.3.3. Four diagnostic plots are automatically produced by applying the `plot()` function directly to the output from `lm()`. In general, this command will preoduce one plot at a time and hitting `Enter` will generate the next plot. However, it is often convenient to view all four plots together. We can achieve this by using the `par()` function, which tells `R` to split the display screen into seperate panels so that multiple plots can be viewed simultaneously. For example, `par(mfrow=c(2, 2))` divides the plotting region in to a 2x2 grid of panels.
+```{r}
+par(mfrow = c(2, 2))
+plot(lm.fit)
+```
+
+Alternatively, we can compute the residuals from a linear regression fit using the `residuals()` function. The function `rstudent()` will return the studentized residuals, and we can use this function to plot the residuals against the fitted values. 
+```{r}
+plot(predict(lm.fit), residuals(lm.fit))
+plot(predict(lm.fit), rstudent(lm.fit))
+```
+
+On the basis of the residual plots, there is some evidence of non-linearity. Leverage statistics can be computed for any number of predictors using the `hatvalues()` function.
+```{r}
+plot(hatvalues(lm.fit))
+which.max(hatvalues(lm.fit))
+```
+
+The `which.max()` function identifies the index of the largest element of a vector. In this case, it tells us which observation has the largest leverage statistic.
+
+# **Multiple Linear Regression**
+In order to fit a multiple linear regression model using least squares, we again use the `lm()` function. The syntax `lm(y ~ x1+x2+x3)` is used to fit a model with three predictors, x1, x2, and x3. The `summary()` function now output the regression coefficients for all the predictors.
+```{r}
+lm.fit = lm(medv~lstat+age, data = Boston)
+summary(lm.fit)
+```
+
+The `Boston` data set contains 13 variables, and so it would be cumbersome to have to type all of these in order to perform a regression using all of the predictors. Instead, we can use the following short-hand:
+```{r}
+lm.fit = lm(medv~., data = Boston)
+summary(lm.fit)
+```
+We can access the individual components of a summary object by name(type `?summary.lm` to see what is available). Hence `summary(lm.fit)$r.sq` gives us the $R^{2}$ and `summary(lm.fit)$sigma` gives us the RSE. The `vif()` function, part of the `car` package, can be used to compute variance inflation factors. Most VIF's are low to moderate for this data. The `car` package is not part of the base R installation so it must be downloaded the first time you use it via the `install.packages` option in R.
+```{r}
+library(car)
+vif(lm.fit)
+```
+
+What if we would like to perform a regression using all of the variables but one? For example, in the above regression ouput, `age` has a high `p-value`. So we may wish to run a regression using all predictors except `age`.
+```{r}
+lm.fit1 = lm(medv~. -age, data = Boston)
+summary(lm.fit1)
+
+lm.fit1 = update(lm.fit, ~.-age)
+summary(lm.fit1)
+```
+
+# **Interaction Terms**
+It is easy to include interaction terms in a linear model using the `lm()` function. The syntax `lstat:black` tells R to include an interaction term between `lstat` and `black`. The syntax `lstat*age` simultaneously includes `lstat, age`, and the interaction term `lstat x age` as predictors; it is a shorthand for `lstat+age+lstat:age`.
+```{r}
+summary(lm(medv~lstat*age, data = Boston))
+```
+
+# **Non-linear Transformations of the Predictors**
+The `lm()` function can also accommodate non-linear transformations of the predictors. For instance, give a predictor X, we can create a predictor $X^{2}$ using `I(X^2)`. The function `I()` is needed since the `^` has a special meaning in a formula; wrapping as we do allows the standard usage in R, which is to raise X to the power 2. We now perform a regression of `medv` onto `lstat` and `lstat^2`
+
+```{r}
+lm.fit2 = lm(medv ~ lstat + I(lstat^2), data =Boston)
+summary(lm.fit2)
+```
+
+The near zero p=value associated with the quadratic term suggest that it leads to an impoved model. We use the `anova()` function to further quantify the extent to which the quadratic fit is superior to the linear fit.
+```{r}
+lm.fit = lm(medv ~ lstat)
+anova(lm.fit, lm.fit2)
+anova(lm.fit2, lm.fit)
+```
+
+Here Model 1 represents the linear submodel containing only one predictor, `lstat`, while Model 2 corresponds to the lareger quadratic model that has two predictors, `lstat` and `lstat^2`. The `anova()` function performs a hypothesis test comparing the two models. The null hypothesis is that the two models fit the data equally well, and the alternative is that the full model is superior. Here the F-statistic is 135 and the associated p-value is virutally zero. This provides very clear evidence that the model containing contains the predictors `lstat` and `lstat^2` is far superior to the model that only contains the preidctor `lstat`. This is not surprising, since earlier we saw evidence for non-linerity in the relationship between `medv` and `lstat`. If we type
+```{r}
+par(mfrow = c(2, 2))
+plot(lm.fit2)
+```
+then we see that when the `lstat^2` term is included in the model, there is little discernible pattern in the residuals.
+  In order to create a cubic fit, we can include a predictor of the form `I(X^3)`. However, this approach can start to get cumbersome for higher-order polynomials. A better approach involves using the `poly()` function to create the polynomial within `lm()`. 
+```{r}
+lm.fit5 = lm(medv~poly(lstat,5))
+summary(lm.fit5)
+```
+  
+This suggests that including additional polynomial fit! Hower, further ivestigation of the data reveals that no polynomial terms beyond fifth order have significant p-values in a regression fit.
+  Of course, we are in no way restricted to using polynomial transformations of the predictors. Here we try a log transformation.
+```{r}
+summary(lm(medv~log(rm), data = Boston))
+```
+
+# **Qualitative Predictors**
+We will now examine the `Carseats` data, which is part of the `ISLR` library. We will attempt to predict `Sales` (child car seat sales) in 400 locations based on a number of predictors. 
+```{r}
+fix(Carseats)
+names(Carseats)
+```
+
+The `Carseats` data includes qualitative predictors such as `Shelveloc`, an indicaor of the quality of the selving location--That is, the space within a store in which the car seat is displayed--at each location. The predictor `Shelveloc` takes on three possible values, `Bad, Medium`, and `Good`.
+
+Given a qualitative variable such as `Shelveloc`, R generates dummy variables automatically below we fit a multiple regression model that includes some interaction terms. 
+```{r}
+lm.fit = lm(Sales ~. + Income:Advertising+Price:Age, data = Carseats)
+summary(lm.fit)
+```
+
+The `constrasts()` function returns the coding that R uses for the dummy variables
+```{r}
+attach(Carseats)
+contrasts(ShelveLoc)
+```
+
+  R has created a `ShelveLocGood` dummy variable that takes on a value of 1 if the shelving location is good, and 0 otherwise. It has also created a `ShelveLocMedium` dummy variable that equals 1 if the shelving location is medium, and 0 otherwise. A bad shelving location corresponds to a zero for each of the two dummy variables. The fact that the coefficient for `ShelveLocGood` in the regression output is positive indicates that a good shelving location is associated with high sales(relative to a bad location). And `ShelveLocmedium` has a smaller positive coefficient, indicating that a medium shelving location leads to higher sales than a bad shelving location but lower sales than a good shelving location.
+  
+# **Exercises**
+
+***Conceptual***
+
+1. Describe the null hypotheses to which the p-values given in Table3.4 correspond. Explain what conclusions you can draw based on these p-values. Your explanation should be phrased in terms of `sales, TV, radio`, and `newspaper`, rather than in terms of the coefficients of the linear model.
+
+* **Answer:**
+
+Null Hypothesis:     Coefficients = 0
+Alternative Hypothesis:    Coefficients $\neq$ 0
+
+The null hypothesis for "TV" is that in the presence of radio ads and newspaper ads, TV ads have no effect on sales. Similarly, the null hypothesis for "radio" is that in the presence of TV and newspaper ads, radio
+ads have no effect on sales. (And there is a similar null hypothesis for "newspaper".) 
+
+From the table: All of coefficients is less than 0.0001 except `newspaper` that means a strong evidence to claim these coefficients is different from 0. In other words, have a relationship between `TV, radio` and response variable `sales`.
+
+2. Carefully explain the differences between the KNN classifier and KNN regression methods.
+
+* **Answer:**
+
+The KNN classifier is for classifier problem, the main idea is **major voting**, which the new observation is labeled by the class appear mostly in K-nearest observation from this new observation.
+
+The KNN regression is for regression problem, the main idea is choosing K nearest neighbor from the new observation and then average them value, then use this result for predicting.
+
+KNN classifier and KNN regression methods are closely related in formula.
+However, the final result of KNN classifier is the classification output for Y
+(qualitative), where as the output for a KNN regression predicts the
+quantitative value for f(X).
+
+3. Suppose we have a data set with five predictors, $X_{1}$ = GPA, $X_{2}$ = IQ, $X_{3}$ = Gender(1 for Female and 0 for Male), $X_{4}$ = Interaction between response is starting salary after graduation (in thousands of dollars). Suppose we use least squares to fit the model, and get 
+
+* $\hat{\beta_{0}} = 50$, 
+* $\hat{\beta_{1}} = 20$, 
+* $\hat{\beta_{2}} = 0.07$, 
+* $\hat{\beta_{3}} = 35$, 
+* $\hat{\beta_{4}} = 0.01$, 
+* $\hat{\beta_{5}} = -10$ 
+
+$Y = 50 + 20(gpa) + 0.07(iq) + 35(gender) + 0.01(gpa * iq) - 10 (gpa * gender)$
+
+a) Which answer is correct, and why?
+
+  i. For a fixed value of IQ and GPA, males earn more on average than females.
+
+**Answer:**
+
+For male: $Y = 50 + 20(gpa) + 0.07(iq) + 0.01(gpa * iq) - 10 (gpa * gender)$
+
+For female: $Y = 50 + 20(gpa) + 0.07(iq) + 35(gender) + 0.01(gpa * iq) - 10 (gpa * gender)$
+
+Not completely true. Once the GPA is high enough to term $10(gpa*gender)$ overcome 35 then the average earns of female is lower than male.
+
+  ii. For a fixed value of IQ and GPA, females earn more on average than males.
+
+For male: $Y = 50 + 20(gpa) + 0.07(iq) + 0.01(gpa*ip) - 10(gpa*gender)$
+
+For female: $Y = 50 + 20(gpa) + 0.07(iq) + 35(gender) + 0.01(gpa*iq) - 10(gpa*gender)$
+
+Not completely true. Once the GPA is not high enough to term $10(gpa*gender)$ overcome 35 then the average earns of female is lower than male.
+
+  iii. For a fixed value of IQ and GPA, males earn more on average than females provided that the GPA is high enough.
+  
+For male: $Y = 50 + 20(gpa) + 0.07(iq) + 0.01(gpa*ip) - 10(gpa*gender)$
+
+For female: $Y = 50 + 20(gpa) + 0.07(iq) + 35(gender) + 0.01(gpa*iq) - 10(gpa*gender)$
+
+**TRUE**. Once the GPA is high enough to term $10(gpa*gender)$ overcome 35 then the average earns of female is higher than male.
+
+  iv. For a fixed value of IQ and GPA, females earn more on average than males provided that the GPA is high enough.
+
+For male: $Y = 50 + 20(gpa) + 0.07(iq) + 0.01(gpa*ip) - 10(gpa*gender)$
+
+For female: $Y = 50 + 20(gpa) + 0.07(iq) + 35(gender) + 0.01(gpa*iq) - 10(gpa*gender)$
+
+**FALSE**. Once the GPA is high enough to term $10(gpa*gender)$ overcome 35 then the average earns of female is higher than male.
+
+b) Predict the salary of a female with IQ of 110 and a GPA of 4.0
+ 
+  Female = $50 + 20*4.0 + 0.07*110 + 35*1 +0.01*(4.0*110) - 10*(4.0*1) = 137.1$ 
+
+c) TRUE of FALSE: Since the coefficient for the GPA/IQ interaction term is very small, there is very little evidence of an interaction effect. Justify your answer.
+
+**ANSWER:**
+
+**FALSE**. We must examine the p-value of the regression coefficient to determine if the interaction term is statistically significant or not. Not just only through term GPA/IQ interaction term is very small.
+
+4. I collect a set of data(n = 100 observations) containing a single predictor and a quantitative response. I then fit a linear regression model to the data, as well as a separate cubic regression, i.e.
+
+  $Y = \beta_{0} + \beta_{1}*X +\beta_{2}*X^{2} = \beta_{3}*X^{3} + \epsilon$
+  
+a) Suppose that the true relationship between X and Y is linear, i.e. $Y = \beta_{0}+\beta_{1}*X + \epsilon$. Consider the training residual sum of squares (RSS) for the linear regression, and also the training RSS for the cubic regression. Would we expect one to be lower than the other, would we expect them to be the same, or is there not enough information to tell? Justify your answer.
+
+**ANSWER:**
+
+I would expect the training sum of squares (RSS) for the cubic regression is lower than linear regression because it could make a tighter fit against data that matched with a wider irreducible error ($Var(\epsilon)$.
+
+Use more complexity model with a true simple model will make overfitting. That means a result in training is better than in test a lot. 
+
+b) Answer a) using test rather than training RSS
+
+**ANSWER:**
+
+Conversely, RSS in cubic regression in the test will higher than linear. It reflects the situation overfitting. Because the overfit from training would have more error than the linear regression.
+
+c) Suppose that the true relationship between X and Y is not linear, but we don't know how far it is from linear. Consider the training RSS for the linear regression, and also the training RSS for the cubic regression. Would we expect one to be lower than the other, would we expect them to be the same, or is there not enough information to tell? Justify your answer.
+
+**ANSWER:**
+
+I would expect the training RSS for the polynomial regression is lower than linear because of higher complexity: no matter what the underlying true relationship is the more flexible model will closer follow points and reduce train RSS.
+
+d) Answer c) using test rather than training RSS.
+
+**ANSWER:**
+
+There is not enough information to tell which test RSS would be lower for either regression given the problem statement is defined as not knowing "how far it it from linear?".
+
+If it is closer to linear than cubic, the linear regression test RSS could be lower than the cubic regression test RSS. Or, if it is closer to cubic than linear, the cubic regression test RSS could be lower than the linear regression test RSS. It is dues to bias-variance tradeoff: it is not clear what level of flexibility will fit data better.
+
+5. Consider the fitted values that result from performing linear regression without an intercept. In this setting, the ith fitted value takes the form
+
+$\hat{y}_{i} = x_{i}\hat{\beta}$
+
+where 
+
+$\hat{\beta} = {(\sum^{n}_{i}x_iy_i)}/{\sum^n_{i'}x_{i'}^2}.$
+
+Show that we can write 
+
+$\hat{y}_{i} = \sum^n_{i'}a_{i'}y_{i'}$
+
+What is $a_{i'}$ ?
+
+We have immediately that
+
+$\hat{y}_{i'} = x_{i'}\hat{\beta} = x_{i}{(\sum^{n}_{i}x_iy_i)}/{\sum^n_{i'}x_{i'}^2} = y_{i}{(\sum^{n}_{i}x_ix_{i'})}/{\sum^n_{i'}x_{i'}^2} = \sum_{j=1}^{n}a_{j}y_{j}$
+
+6. Using (3.4), argue that in the case of simple linear regression, the least squares line always passes through the point $(\bar{x}, \bar{y})$.
+
+# **Applied**
+
+Q8'. This question involves the use of simple linear regression on the ``Auto`` data set.
+
+a) Use the `lm()` function to perform a simple linear regression with `mpg` as the response and `horsepower` as the predictor. Use the `summary()` function to print the results. Comment on the output.
+For example:
+
+i. Is there a relationship between the predictor and the response?
+
+```{r message = FALSE, warning=FALSE}
+library(tidyverse)
+library(ISLR)
+
+data(Auto)
+fit <- lm(mpg ~ .-name, data = Auto)
+summary(fit)
+# displacement   0.019896   0.007515   2.647  0.00844 ** 
+# weight        -0.006474   0.000652  -9.929  < 2e-16 ***
+# year           0.750773   0.050973  14.729  < 2e-16 ***
+# origin         1.426141   0.278136   5.127 4.67e-07 ***
+
+## F-statistic: 252.4 on 7 and 384 DF,  p-value: < 2.2e-16
+```
+
+From 4 above very small p-values according to that indicates a clear evidence of a relationship between mpg and these predictors.
+
+ii. How strong is the relationship between the predictor and the response ?
+
+Multiple R-squared:  0.8215,	Adjusted R-squared:  0.8182 
+F-statistic: 252.4 on 7 and 384 DF,  p-value: < 2.2e-16
+
+Adjusted R-squared = 0.8182 means that almost 81.82% of the variability in "mpg" can be explained using all predictors except `name`.
+
+
+iii. Is the relationship between the predictor and the response positive or negative ?
+
+**ANSWER:**
+
+
+Coefficients of origin and year predictor are quite high and positive sign. Indicates that these 2 predictor have a very important role to predict and interpret the response.
+
+iv. What is the predicted `mpg` associated with a `horsepower` of 98? What are the associated 95% confidence and prediction intervals.
+
+
+Q8. This question involves the use of simple linear regression on the ``Auto`` data set.
+
+a) Use the `lm()` function to perform a simple linear regression with `mpg` as the response and `horsepower` as the predictor. Use the `summary()` function to print the results. Comment on the output.
+For example:
+
+i. Is there a relationship between the predictor and the response ?
+
+```{r message = FALSE, warning=FALSE}
+library(ISLR)
+data(Auto)
+fit <- lm(mpg ~ horsepower, data = Auto)
+summary(fit)
+```
+
+**ANSWER:**
+
+We can answer this question by testing the hypothesis $H_{0} : \beta_{i}=0. \forall_{i}$
+The p-value corresponding to the F-statistic is $7.031989.10^{-81}$, this indicates a clear evidence of a relationship between “mpg” and “horsepower”.
+
+ii. How strong is the relationship between the predictor and the response ?
+
+**ANSWER:**
+
+To calculate the residual error relative to the response we use the mean of the response and the RSE. The mean of mpg is 23.4459184. The RSE of the lm.fit was 4.9057569 which indicates a percentage error of 20.9237141%. We may also note that as the R2 is equal to 0.6059483, almost 60.5948258% of the variability in “mpg” can be explained using “horsepower”.
+
+iii. Is the relationship between the predictor and the response positive or negative ?
+
+As the coefficient of “horsepower” is negative, the relationship is also negative. The more horsepower an automobile has the linear regression indicates the less mpg fuel efficiency the automobile will have.
+
+vi. iv. What is the predicted `mpg` associated with a `horsepower` of 98? What are the associated 95% confidence and prediction intervals.
+```{r}
+predict(fit, data.frame(horsepower = 98), interval = "confidence")
+predict(fit, data.frame(horsepower = 98), interval = "prediction")
+```
+
+b. Plot the response and the predictor. Use the `abline()` function to display the least squares regression line.
+```{r}
+plot(Auto$horsepower, Auto$mpg, main = "Scatterplot of mpg vs. horsepower", xlab = "horsepower", ylab = "mpg", col = "blue")
+abline(fit, col = "red")
+```
+
+c. Use the `plot()` function to produce diagnostic plots of the least squares regression fit. Comment on any problems you see with the fit.
+```{r message=FALSE, warning=FALSE}
+par(mfrow = c(2, 2))
+plot(fit)
+```
+
+* The plot of residuals versus fitted values (Plot 1) indicates the presence of non linearity in the data. 
+* The plot of standardized residuals versus leverage (Plot 4) indicates the presence of a few outliers (higher than 2 or lower than -2) and a few high leverage points.
+
+Q9. This question involves the use of multiple linear regression on the “Auto” data set.
+
+a. Produce a scatterplot matrix which includes all of the variables in the data set.
+
+```{r message=FALSE, warning=FALSE}
+pairs(Auto)
+```
+
+b. Compute the matrix of correlations between the variables using the function `cor()`. You will need to exclude the `name` variable, which is qualitative.
+
+```{r message=FALSE, warning=FALSE}
+cor(Auto %>% select(-name)) 
+```
+
+c. Use the `lm()` function to perform a multiple linear regression with `mpg` as the response and all other variables except `name` as the predictors. Use the `summary()` function to print the results. Comment on the output. For instance:
+
+```{r}
+fit_mul <- lm(mpg ~ .-name, data = Auto)
+summary(fit_mul)
+```
+
+i. Is there a relationship between the predictors and the response?
+
+**ANSWER:**
+
+We can answer this question by again testing the hypothesis $H_{0} : \beta_{i}=0, \forall_{i}$. The p-value corresponding to F-statistic is $2.0371*10^{-139}$, this value is very small indicates that a clear evidence of a relationship between `mpg` and the other predictors.
+
+ii. Which predictors appear to have a statistically significant relationship to the response ?
+
+**ANSWER:**
+
+               Estimate Std. Error t value Pr(>|t|) 
+displacement   0.019896   0.007515   2.647  0.00844 ** 
+weight        -0.006474   0.000652  -9.929  < 2e-16 ***
+year           0.750773   0.050973  14.729  < 2e-16 ***
+origin         1.426141   0.278136   5.127 4.67e-07 ***
+
+Four variables above have a statistically significant relationship to the response expressed through small p-values associated with each predictor's t-statistic.
+
+iii. What does the coefficient for the `year` variable suggest?
+
+**ANSWER:**
+
+year           0.750773   0.050973  14.729  < 2e-16 ***
+
+The coefficient of the `year` variable suggest that the average effect of an increase of 1 year is an increase of $0.750773$ in `mpg` (all other predictors remaining constant). In other words, cars become more fuel efficient every year by almost 1 mpg/year
+
+d) Use the `plot()` function to produce diagnostic plots of the linear regression fit. Comment on any problems you see  with the fit/ Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?
+
+**ANSWER:**
+
+```{r}
+par(mfrow = c(2, 2))
+
+plot(fit_mul)
+```
+
+As before, the plot of residuals versus fitted values indicates the presence of mild non linearity in the data. The plot of standardized residuals versus leverage indicates the presence of a few outliers (higher than 2 or lower than -2) and one high leverage point.
+
+e) Use the * and : symbols to fit linear regression models with interaction effects/ Do any interactions appear to be statistically significant?
+
+```{r}
+fit3 <- lm(mpg ~ cylinders * displacement+displacement * weight, data = Auto[, 1:8])
+summary(fit3)
+```
+
+From the p-values, we can see that the interaction between displacement and weight is statistically signifcant, while the interactiion between cylinders and displacement is not.
+
+f. Try a few different transformations of the variables, such as $log(x), \sqrt{X}, X^2$. Comment on your findings
+
+```{r}
+par(mfrow = c(2, 2))
+plot(log(Auto$horsepower), Auto$mpg)
+plot(sqrt(Auto$horsepower), Auto$mpg)
+plot((Auto$horsepower)^2, Auto$mpg)
+```
+
+We limit ourselves to examining “horsepower” as sole predictor. It seems that the log transformation gives the most linear looking plot.
+
+10. This question should be answered using the `Carseats` data set.
+
+a) Fit a multiple regression model to predict `Sales` using `Price, Urban`, and `US`.
+
+```{r}
+data("Carseats")
+
+fit4 <- lm(Sales ~ Price+Urban+US, data = Carseats)
+summary(fit4)
+```
+
+b) Provide an interpretation of each coefficient in the model. Be careful--some of the variables in the model are qualitative!
+
+**ANSWER:**
+
+The coefficient of the `Price` variable may be interpreted by saying that the average effect of a price increase of 1 dollar is a decrease of $54.4588492$ units in `Sales` all other predictors remaining fixed. The coefficient of the `Urban` variable may be interpreted by saying that on average the unit sales in urban location are $21.9161508$ units less than in rural location all other predictors remaining fixed. The coefficient of the `US` variable may be interpreted by saying that on average the unit sales in a `US` store are 1200.5726978 units more than in a non US store all other predictors remaining fixed.
+
+c) Write out the model in equation form, being careful to handle the qualitative variables properly.
+
+The model may be written as:
+
+$Sales = 13.043469 - 0.054459*Price - 0.021916*I(Urban = 1) + 1.200573*I(US = 1) + \epsilon $
+
+with I is indicator.
+
+d) For which of the predictors can you reject the null hypothesis $H_{0}:\beta_{j} = 0$ ?
+
+We can reject the null hypothesis for the `Price` and `US` variables. Because small values corresponding to each predictor's t-statistic give a strong evidence to reject null hypothesis.
+
+e) On the basis of your response to the previous question, fit a smaller model that only uses the predictors for which there is evidence of association with the outcome.
+
+```{r}
+fit5 <- lm(Sales ~ Price+US, data = Carseats)
+summary(fit5)
+```
+
+Have an increase of `Adjusted R-squared`.
+
+f) How well do the models in (a) and (e) fit the data ?
+
+Model in (e) is better than (a). Because the value of `Adjusted R-squared` is higher than model use lesser predictors.
+
+```{r}
+anova(fit4, fit5)
+```
+
+g) Using the model from (e), obtain a 95% confidence inteervals for the coefficient(s).
+
+```{r}
+confint(fit4)
+confint(fit5)
+```
+
+h) Is there evidence of outliers or high leverage observations in the model from (e)?
+
+```{r}
+par(mfrow = c(2,2))
+plot(fit5)
+```
+
+The plot of standardized residuals versus leverage indicates the presence of a few outliers (higher than 2 and lower than -2) and some leverage points as some points exceed $(p+1)/n *0.01$.
+
+Q11. In this problem we will investigate the t-statistic for the null hypothesis $H_{0}:\beta = 0$ in simple linear regression without an intercept. To begin, we generate a predictor `x` and a response `y` as follows.
+
+```{r}
+set.seet(1)
+
+x = rnorm(100)
+y = 2*x + rnorm(100)
+```
+
+a) Perform a simple linear regression of `y` onto `x`, *without* an intercept. Report the coefficient estimate $\hat{\beta}$, the standard error of this coefficient estimate, and the t-statistic and p-value associated with the null hypothesis $H_{0}:\beta = 0$. Comment on these results. (You can perform regression without an intercept using the command `lm(y~x+0)`)
+
+```{r}
+fit6 <- lm(y ~ x + 0)
+summary(fit6)
+```
+
+Even have a true relationship between `y` and `x`. The variable `x` can not explain entire variability happen within y. This is interesting. That only $81.55%$ variability can be explained.
+
+According to the summary above, we have a value of $1.9938761$ for $\hat{β}$, a value of $0.1064767$ for the standard error, a value of $18.7259319$ for the t-statistic and a value of $2.6421969*10^{-34}$ for the p-value. The small p-value allows us to reject $H_{0}$.
+
+b) Now perform a simple linear regression of `x` onto `y` *without* an intercept, and report the coefficient estimate, its standard error, and the corresponding t-statistic and p-values associated with the null hypothesis $H_{0}:\beta = 0$. Comment on these results.
+
+```{r}
+fit7 <- lm(x ~ y + 0)
+summary(fit7)
+```
+
+According to the summary above, we have a value of $0.3911145 $ for $\hat{β}$, a value of $0.0208863$ for the standard error, a value of $18.7259319$ for the t-statistic and a value of $2.6421969*10^{-34}$ for the p-value. The small p-value allows us to reject $H_{0}$.
+
+Different $\hat{β}$, and standard error. But similar in t-statistic and p-value. This is weird to me.
+
+c) What is the relationship between the results obtained in (a) and (b) ?
+
+We obtain the same value for the t-statistic and consequently the same value for the corresponding p-value. Both results in (a) and (b) reflect the same line created in (a). In other words, $y = 2x +\epsilon$ could also be written as $x = 0.5(y-\epsilon)$
+
+d) For the regression of Y onto X without an intercept, the t-statistic for $H_{0} : \beta = 0$ takes the form $\hat{\beta}/SE(\hat{\beta})$, where $\hat{\beta}$ is given by (3.38), and where
+
+$SE(\hat{\beta}) = \sqrt{\sum^n_i(y_i - x_i\hat{\beta})^2/(n-1)\sum^n_{i'}x^2_{i'}}$
+
+(These formulas are slightly different from those given in Sections 3.1.1 nad 3.1.2, since here we are performing regression without an intercept.) Show algebraically, and confirm numerically in `R`, that the t-statistic can be written as
+
+$\frac{(\sqrt{n-1})\sum^n_ix_iy_i}{\sqrt{(\sum^n_ix_i^2)(\sum^n_iy^2_i) - (\sum^n_ix_iy_i)^2}}$
+
+We have
+
+$\hat{\beta} = {(\sum^{n}_{i}x_iy_i)}/{\sum^n_{i'}x_{i'}^2}.$
+
+$t = \frac{\sum_ix_iy_i/\sum_jx_j^2}{\sqrt{\sum^n_i(y_i - x_i\hat{\beta})^2/(n-1)\sum^n_{i'}x^2_{i'}}} = \frac{\sqrt{n-1}\sum_ix_iy_i}{\sqrt{\sum_jx_j^2\sum_i(y_i-x_i(\sum_jx_jy_j)/\sum_jx_j^2)^2}} = \frac{(\sqrt{n-1})\sum^n_ix_iy_i}{\sqrt{(\sum^n_ix_i^2)(\sum^n_iy^2_i) - (\sum^n_ix_iy_i)^2}}$
+
+Now verify this result numerically.
+
+```{r}
+n <- length(x)
+
+t <- sqrt(n-1)*(x%*%y)/sqrt(sum(x^2)*sum(y^2) - (x%*%y)^2)
+```
+
+We may see that the `t` above is exactly the t-statistic given in the summary of `fit7`.
+
+e) Using the results from (d), argue that the t-statistic for the regression of y onto x is the same as the t-statistic for the regression of x onto y
+
+**ANSWER:**
+
+It is easy to see that if we replace `xi` by `yi` in the formula for the t-statistic, the result would be the same.
+
+f) In R, show that when regression is performed `with` an intercept, the t-statistic for $H_0:\beta_1 = 0$ is the same for the regression of `y` onto `x` as it is for the regression of `x` onto `y`
+
+```{r}
+fit8 <- lm(y ~ x)
+summary(fit7)
+
+fit9 <- lm(x ~ y)
+summary(fit9)
+```
+
+Why even make a regression with intercept, the result of t-statistic can still equal.
+
+
