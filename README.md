@@ -1,1 +1,3 @@
-# ISLR_self_study
+# **Myself learning of Introduction to Statistical Learning**
+
+I do exercise and comment.
